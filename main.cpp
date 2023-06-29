@@ -542,8 +542,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector3 cameraTranslate{ 0.0f,1.9f,-5.49f };
 	Vector3 cameraRotate{ 0.26f,0.0f,0.0f };
 
+	
+	int mouseMovePosX = 0;
+	int mouseMovePosY = 0;
 
-
+	
 	const float move = 0.01f;
 
 	// ウィンドウの×ボタンが押されるまでループ
@@ -558,7 +561,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		///
 		/// ↓更新処理ここから
 		///
+		
 
+		
+		if (keys[DIK_SPACE]) {
+			Novice::GetMousePosition(&mouseMovePosX, &mouseMovePosY);
+			
+			
+			
+			if (mouseMovePosX > 1280/2) {
+				cameraRotate.y += move;
+			}
+			else if (mouseMovePosX < 1280/2) {
+				cameraRotate.y -= move;
+			}
+			/*
+			if (mouseMovePosY > 720 / 2) {
+				cameraRotate.x += move;
+			}
+			else if (mouseMovePosY < 720 / 2) {
+				cameraRotate.x -= move;
+			}
+			*/
+		}
+		
 
 		if (keys[DIK_W]) {
 			cameraTranslate.y += move;
@@ -617,6 +643,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		ImGui::DragFloat3("aabb2.min", &aabb2.min.x, 0.01f);
 		ImGui::DragFloat3("aabb2.max", &aabb2.max.x, 0.01f);
 
+		
 
 		ImGui::End();
 
