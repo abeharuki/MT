@@ -4,6 +4,7 @@
 #include <math.h>
 #include <assert.h>
 #include <imgui.h>
+#include <algorithm>
 
 const char kWindowTitle[] = "学籍番号";
 
@@ -353,13 +354,14 @@ float Dot(const Vector3& v1, const Vector3& v2) {
 };
 
 
-bool IsCollision(const AABB& a, const AABB& b) {
+bool IsCollision(const AABB& a, const Sphere& s1) {
 	bool collision = false;
+	Vector3 closesetPoint{std::clamp(s1.center.x,a.min.x,a.max.x),
+						  std::clamp(s1.center.y,a.min.y,a.max.y),
+						  std::clamp(s1.center.z,a.min.z,a.max.z) };
+	float distance = Length(Subract(closesetPoint, s1.center));
 
-
-	if ((a.min.x <= b.max.x && a.max.x >= b.min.x) &&
-		(a.min.y <= b.max.y && a.max.y >= b.min.y) &&
-		(a.min.z <= b.max.z && a.max.z >= b.min.z)) {
+	if (distance <= s1.radius) {
 
 
 		collision = true;
@@ -367,6 +369,55 @@ bool IsCollision(const AABB& a, const AABB& b) {
 
 
 	return collision;
+}
+
+
+void DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+	const uint32_t kSubdivision = 20;//分割数
+	const float pi = 3.14f;//π
+	const float kLonEvery = 2.0f * pi / kSubdivision;//経度分割1つ分の角度(φd)
+	const float kLatEvery = pi / kSubdivision;//緯度分割1つ分の角度(θd)
+
+	//緯度の方向に分割-π/2~π/2
+	for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
+		float lat = -pi / 2.0f + kLatEvery * latIndex;//現在の緯度(θ)
+		//経度の方向に分割
+		for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
+			float lon = lonIndex * kLonEvery;//現在の経度(φ)
+			Vector3 a, b, c;
+			a = { std::cos(lat) * std::cos(lon) * sphere.radius + sphere.center.x,
+				  std::sin(lat) * sphere.radius + sphere.center.y ,
+				  std::cos(lat) * std::sin(lon) * sphere.radius + sphere.center.z };
+
+			b = { std::cos(lat + kLatEvery) * std::cos(lon) * sphere.radius + sphere.center.x ,
+				  std::sin(lat + kLatEvery) * sphere.radius + sphere.center.y ,
+				  std::cos(lat + kLatEvery) * std::sin(lon) * sphere.radius + sphere.center.z };
+
+			c = { std::cos(lat) * std::cos(lon + kLonEvery) * sphere.radius + sphere.center.x,
+				  std::sin(lat) * sphere.radius + sphere.center.y ,
+				  std::cos(lat) * std::sin(lon + kLonEvery) * sphere.radius + sphere.center.z };
+
+			//正規化デバイス座標系
+			Vector3 ndcVertexA = Transform(a, viewProjectionMatrix);
+			Vector3 ndcVertexB = Transform(b, viewProjectionMatrix);
+			Vector3 ndcVertexC = Transform(c, viewProjectionMatrix);
+			//スクリーン座標系
+			Vector3 screenVerticesA = Transform(ndcVertexA, viewportMatrix);
+			Vector3 screenVerticesB = Transform(ndcVertexB, viewportMatrix);
+			Vector3 screenVerticesC = Transform(ndcVertexC, viewportMatrix);
+
+			//ab
+			Novice::DrawLine(int(screenVerticesA.x), int(screenVerticesA.y),
+				int(screenVerticesB.x), int(screenVerticesB.y),
+				color);
+			//bc
+			Novice::DrawLine(int(screenVerticesA.x), int(screenVerticesA.y),
+				int(screenVerticesC.x), int(screenVerticesC.y),
+				color);
+
+		}
+	}
+
 }
 
 
@@ -528,10 +579,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	};
 
-	AABB aabb2{
-		.min{0.2f,0.2f,0.2f},
-		.max{1.0f,1.0f,1.0f},
-
+	Sphere sphere = {
+		{ 0.0f,0.0f,0.0f },
+		0.5f
 	};
 
 	int color = WHITE;
@@ -622,7 +672,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-		if (IsCollision(aabb1, aabb2)) {
+		if (IsCollision(aabb1,sphere )) {
 			color = RED;
 		}
 		else {
@@ -640,8 +690,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		ImGui::DragFloat3("aabb1.min", &aabb1.min.x, 0.01f);
 		ImGui::DragFloat3("aabb1.max", &aabb1.max.x, 0.01f);
-		ImGui::DragFloat3("aabb2.min", &aabb2.min.x, 0.01f);
-		ImGui::DragFloat3("aabb2.max", &aabb2.max.x, 0.01f);
+		
 
 		
 
@@ -658,7 +707,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 		DrawAABB(aabb1, viewProjectionMatrix, viewportMatrix, color);
-		DrawAABB(aabb2, viewProjectionMatrix, viewportMatrix, WHITE);
+		DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, WHITE);
+
 
 
 		///
