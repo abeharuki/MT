@@ -15,6 +15,7 @@ struct Vector3 {
 	float x, y, z;
 };
 
+
 struct Matrix4x4 {
 	float m[4][4];
 };
@@ -352,16 +353,38 @@ float Dot(const Vector3& v1, const Vector3& v2) {
 	return dot;
 };
 
-
-bool IsCollision(const AABB& a, const AABB& b) {
+bool IsCollision(const AABB& a, const Segment& line) {
 	bool collision = false;
+	Vector3 nX = { 1,0,0 };
+	Vector3 nY = { 0,1,0 };
+	Vector3 nZ = { 0,0,1 };
+	float dotX = Dot(line.deff, nX);
+	float dotY = Dot(line.deff, nY);
+	float dotZ = Dot(line.deff, nZ);
 
+	if (dotX == 0.0f || dotY == 0.0f || dotZ == 0.0f) {
+		return collision;
+	}
 
-	if ((a.min.x <= b.max.x && a.max.x >= b.min.x) &&
-		(a.min.y <= b.max.y && a.max.y >= b.min.y) &&
-		(a.min.z <= b.max.z && a.max.z >= b.min.z)) {
+	float tXmin = (Dot(a.min,nX) - Dot(line.origin, nX)) / dotX;
+	float tYmin = (Dot(a.min,nY) - Dot(line.origin, nY)) / dotY;
+	float tZmin = (Dot(a.min,nZ) - Dot(line.origin, nZ)) / dotZ;
 
+	float tXmax = (Dot(a.max, nX) - Dot(line.origin, nX)) / dotX;
+	float tYmax = (Dot(a.max, nY) - Dot(line.origin, nY)) / dotY;
+	float tZmax = (Dot(a.max, nZ) - Dot(line.origin, nZ)) / dotZ;
 
+	float tNearX = min(tXmin, tXmax); float tFarX = max(tXmin, tXmax);
+	float tNearY = min(tYmin, tYmax); float tFarY = max(tYmin, tYmax);
+	float tNearZ = min(tZmin, tZmax); float tFarZ = max(tZmin, tZmax);
+
+	//AABBとの衝突判定（貫通点）のtが小さい方
+	float tmin = max(max(tNearX, tNearY), tNearZ);
+	//AABBとの衝突判定（貫通点）のtが大きい方
+	float tmax = min(min(tFarX, tFarY), tFarZ);
+	//float length = Length(Normalize(line.deff));
+	//float length = Length(Normalize(line.origin));
+	if (tmin <= tmax ) {
 		collision = true;
 	}
 
@@ -524,14 +547,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	AABB aabb1{
 		.min{-0.5f,-0.5f,-0.5f},
-		.max{0.0f,0.0f,0.0f},
+		.max{0.5f,0.5f,0.5f},
 
 	};
 
-	AABB aabb2{
-		.min{0.2f,0.2f,0.2f},
-		.max{1.0f,1.0f,1.0f},
-
+	Segment segment{ 
+		.origin{-0.7f,0.3f,0.0f},
+		.deff{1.0f,-0.5f,0.0f} 
 	};
 
 	int color = WHITE;
@@ -543,6 +565,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector3 cameraRotate{ 0.26f,0.0f,0.0f };
 
 	
+
 	int mouseMovePosX = 0;
 	int mouseMovePosY = 0;
 
@@ -608,6 +631,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			cameraTranslate.z -= move * 10;
 		}
 
+	
+
 		//各行列の計算
 		Matrix4x4 worldMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, rotate, translate);
 
@@ -621,14 +646,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0, 0, float(kWindowWidtht), float(kWindowHeight), 0.0f, 1.0f);
 
 
-
-		if (IsCollision(aabb1, aabb2)) {
+		
+		if (IsCollision(aabb1, segment)) {
 			color = RED;
 		}
 		else {
 			color = WHITE;
 		}
-
+		
 
 		aabb1.min.x = (std::min)(aabb1.min.x, aabb1.max.x);
 		aabb1.max.x = (std::max)(aabb1.min.x, aabb1.max.x);
@@ -640,10 +665,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		ImGui::DragFloat3("aabb1.min", &aabb1.min.x, 0.01f);
 		ImGui::DragFloat3("aabb1.max", &aabb1.max.x, 0.01f);
-		ImGui::DragFloat3("aabb2.min", &aabb2.min.x, 0.01f);
-		ImGui::DragFloat3("aabb2.max", &aabb2.max.x, 0.01f);
 
-		
+		ImGui::DragFloat3("Segment Origin", &segment.origin.x, 0.01f);
+		ImGui::DragFloat3("Segment Diff", &segment.deff.x, 0.01f);
 
 		ImGui::End();
 
@@ -658,8 +682,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 		DrawAABB(aabb1, viewProjectionMatrix, viewportMatrix, color);
-		DrawAABB(aabb2, viewProjectionMatrix, viewportMatrix, WHITE);
-
+		Vector3 start = Transform(Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
+		Vector3 end = Transform(Transform(Add(segment.origin, segment.deff), viewProjectionMatrix), viewportMatrix);
+		Novice::DrawLine(int(start.x), int(start.y),
+			int(end.x), int(end.y), WHITE);
 
 		///
 		/// ↑描画処理ここまで
