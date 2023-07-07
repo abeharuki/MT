@@ -362,7 +362,7 @@ bool IsCollision(const AABB& a, const Segment& line) {
 	float dotY = Dot(line.deff, nY);
 	float dotZ = Dot(line.deff, nZ);
 
-	if (dotX == 0.0f || dotY == 0.0f || dotZ == 0.0f) {
+	if (dotX == 0.0f) {
 		return collision;
 	}
 
@@ -382,9 +382,9 @@ bool IsCollision(const AABB& a, const Segment& line) {
 	float tmin = max(max(tNearX, tNearY), tNearZ);
 	//AABBとの衝突判定（貫通点）のtが大きい方
 	float tmax = min(min(tFarX, tFarY), tFarZ);
-	//float length = Length(Normalize(line.deff));
+	float length = Length(Normalize(line.deff));
 	//float length = Length(Normalize(line.origin));
-	if (tmin <= tmax ) {
+	if (tmin <= tmax && tmin <= length) {
 		collision = true;
 	}
 
@@ -660,6 +660,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		aabb1.min.y = (std::min)(aabb1.min.y, aabb1.max.y);
 		aabb1.max.y = (std::max)(aabb1.min.y, aabb1.max.y);
 
+		
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("CamerRotate", &cameraRotate.x, 0.01f);
 
@@ -669,6 +670,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		ImGui::DragFloat3("Segment Origin", &segment.origin.x, 0.01f);
 		ImGui::DragFloat3("Segment Diff", &segment.deff.x, 0.01f);
 
+	
 		ImGui::End();
 
 		///
