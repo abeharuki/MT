@@ -353,47 +353,13 @@ float Dot(const Vector3& v1, const Vector3& v2) {
 	return dot;
 };
 
-bool IsCollision(const AABB& a, const Segment& line) {
-	bool collision = false;
-	Vector3 nX = { 1,0,0 };
-	Vector3 nY = { 0,1,0 };
-	Vector3 nZ = { 0,0,1 };
-	float dotX = Dot(line.deff, nX);
-	float dotY = Dot(line.deff, nY);
-	float dotZ = Dot(line.deff, nZ);
+Vector3 Lerp(const Vector3& v1, const Vector3& v2, float t) {
 
-	if (dotX == 0.0f) {
-		return collision;
-	}
-
-	float tXmin = (Dot(a.min,nX) - Dot(line.origin, nX)) / dotX;
-	float tYmin = (Dot(a.min,nY) - Dot(line.origin, nY)) / dotY;
-	float tZmin = (Dot(a.min,nZ) - Dot(line.origin, nZ)) / dotZ;
-
-	float tXmax = (Dot(a.max, nX) - Dot(line.origin, nX)) / dotX;
-	float tYmax = (Dot(a.max, nY) - Dot(line.origin, nY)) / dotY;
-	float tZmax = (Dot(a.max, nZ) - Dot(line.origin, nZ)) / dotZ;
-
-	float tNearX = min(tXmin, tXmax); float tFarX = max(tXmin, tXmax);
-	float tNearY = min(tYmin, tYmax); float tFarY = max(tYmin, tYmax);
-	float tNearZ = min(tZmin, tZmax); float tFarZ = max(tZmin, tZmax);
-
-	//AABBとの衝突判定（貫通点）のtが小さい方
-	float tmin = max(max(tNearX, tNearY), tNearZ);
-	//AABBとの衝突判定（貫通点）のtが大きい方
-	float tmax = min(min(tFarX, tFarY), tFarZ);
-	
-	if (tmin <= tmax && tmax >= 0 && tmin <=1) {
-		collision = true;
-	}
-	ImGui::Begin("Window");
-	ImGui::Text("tmin%f", tmin);
-	ImGui::Text("tmax%f", tmax);
-	ImGui::End();
-
-	return collision;
 }
 
+void DrawBezire(
+    const Vector3& controlPoints0, const Vector3& controlPoints1, const Vector3& controlPoints2,
+    const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color){};
 
 void DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix) {
 	const float kGridHalfWidth = 2.0f;//Gridの半分の幅
@@ -460,82 +426,6 @@ static const int kWindowWidtht = 1280;
 static const int kWindowHeight = 720;
 
 
-//AABBの描画
-void DrawAABB(const AABB& aabb, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
-
-	Vector3 vertex[8];
-
-	Vector3 ndcVertex[8];
-
-	Vector3 screenVertices[8];
-
-
-
-	vertex[0] = { aabb.min.x ,aabb.min.y ,aabb.min.z };
-	vertex[1] = { aabb.min.x ,aabb.min.y ,aabb.max.z };
-
-	vertex[2] = { aabb.max.x ,aabb.min.y ,aabb.min.z };
-	vertex[3] = { aabb.max.x ,aabb.min.y ,aabb.max.z };
-
-	vertex[4] = { aabb.min.x,aabb.max.y , aabb.min.z };
-	vertex[5] = { aabb.min.x,aabb.max.y , aabb.max.z };
-
-	vertex[6] = { aabb.max.x,aabb.max.y , aabb.min.z };
-	vertex[7] = { aabb.max.x,aabb.max.y , aabb.max.z };
-
-
-	for (uint32_t Index = 0; Index < 8; ++Index) {
-		//正規化デバイス座標系
-		ndcVertex[Index] = Transform(vertex[Index], viewProjectionMatrix);
-		//スクリーン座標系
-		screenVertices[Index] = Transform(ndcVertex[Index], viewportMatrix);
-	}
-
-	//底辺
-	Novice::DrawLine(int(screenVertices[0].x), int(screenVertices[0].y),
-		int(screenVertices[1].x), int(screenVertices[1].y),
-		color);
-	Novice::DrawLine(int(screenVertices[0].x), int(screenVertices[0].y),
-		int(screenVertices[2].x), int(screenVertices[2].y),
-		color);
-	Novice::DrawLine(int(screenVertices[1].x), int(screenVertices[1].y),
-		int(screenVertices[3].x), int(screenVertices[3].y),
-		color);
-	Novice::DrawLine(int(screenVertices[2].x), int(screenVertices[2].y),
-		int(screenVertices[3].x), int(screenVertices[3].y),
-		color);
-
-	//上辺
-	Novice::DrawLine(int(screenVertices[4].x), int(screenVertices[4].y),
-		int(screenVertices[5].x), int(screenVertices[5].y),
-		color);
-	Novice::DrawLine(int(screenVertices[4].x), int(screenVertices[4].y),
-		int(screenVertices[6].x), int(screenVertices[6].y),
-		color);
-	Novice::DrawLine(int(screenVertices[5].x), int(screenVertices[5].y),
-		int(screenVertices[7].x), int(screenVertices[7].y),
-		color);
-	Novice::DrawLine(int(screenVertices[6].x), int(screenVertices[6].y),
-		int(screenVertices[7].x), int(screenVertices[7].y),
-		color);
-
-	//面
-	Novice::DrawLine(int(screenVertices[0].x), int(screenVertices[0].y),
-		int(screenVertices[4].x), int(screenVertices[4].y),
-		color);
-	Novice::DrawLine(int(screenVertices[1].x), int(screenVertices[1].y),
-		int(screenVertices[5].x), int(screenVertices[5].y),
-		color);
-	Novice::DrawLine(int(screenVertices[2].x), int(screenVertices[2].y),
-		int(screenVertices[6].x), int(screenVertices[6].y),
-		color);
-	Novice::DrawLine(int(screenVertices[3].x), int(screenVertices[3].y),
-		int(screenVertices[7].x), int(screenVertices[7].y),
-		color);
-
-
-}
-
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -547,18 +437,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	char preKeys[256] = { 0 };
 
 
-	AABB aabb1{
-		.min{-0.5f,-0.5f,-0.5f},
-		.max{0.5f,0.5f,0.5f},
-
+	Vector3 controlPoints[3] = {
+	    {-0.8f, 0.58f, 1.0f },
+	    {1.76f, 1.0f,  -0.3f},
+	    {0.94f, -0.7f, 2.3f },
 	};
-
-	Segment segment{ 
-		.origin{-0.7f,0.3f,0.0f},
-		.deff{1.0f,-0.5f,0.0f} 
-	};
-
-	int color = WHITE;
 
 
 	Vector3 rotate{ 0,0,0 };
@@ -648,21 +531,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0, 0, float(kWindowWidtht), float(kWindowHeight), 0.0f, 1.0f);
 
 
-		
-		if (IsCollision(aabb1, segment)) {
-			color = RED;
-		}
-		else {
-			color = WHITE;
-		}
-		
-
-		aabb1.min.x = (std::min)(aabb1.min.x, aabb1.max.x);
-		aabb1.max.x = (std::max)(aabb1.min.x, aabb1.max.x);
-		aabb1.min.y = (std::min)(aabb1.min.y, aabb1.max.y);
-		aabb1.max.y = (std::max)(aabb1.min.y, aabb1.max.y);
-
-		
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("CamerRotate", &cameraRotate.x, 0.01f);
 
@@ -685,11 +553,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
 
 
-		DrawAABB(aabb1, viewProjectionMatrix, viewportMatrix, color);
-		Vector3 start = Transform(Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
-		Vector3 end = Transform(Transform(Add(segment.origin, segment.deff), viewProjectionMatrix), viewportMatrix);
-		Novice::DrawLine(int(start.x), int(start.y),
-			int(end.x), int(end.y), WHITE);
+		
 
 		///
 		/// ↑描画処理ここまで
