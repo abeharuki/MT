@@ -382,12 +382,14 @@ bool IsCollision(const AABB& a, const Segment& line) {
 	float tmin = max(max(tNearX, tNearY), tNearZ);
 	//AABBとの衝突判定（貫通点）のtが大きい方
 	float tmax = min(min(tFarX, tFarY), tFarZ);
-	float length = Length(Normalize(line.deff));
-	//float length = Length(Normalize(line.origin));
-	if (tmin <= tmax && tmin <= length) {
+	
+	if (tmin <= tmax && tmax >= 0 && tmin <=1) {
 		collision = true;
 	}
-
+	ImGui::Begin("Window");
+	ImGui::Text("tmin%f", tmin);
+	ImGui::Text("tmax%f", tmax);
+	ImGui::End();
 
 	return collision;
 }
