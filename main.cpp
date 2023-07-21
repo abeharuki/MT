@@ -29,7 +29,6 @@ struct Sphere
 
 
 
-
 //加算
 Vector3 Add(const Vector3& v1, const Vector3& v2) {
 	Vector3 add;
@@ -322,14 +321,6 @@ float Dot(const Vector3& v1, const Vector3& v2) {
 	return dot;
 };
 
-Vector3 Lerp(const Vector3& p0, const Vector3& p1, float t) {
-	return {
-	    (1.0f - t) * p0.x + t * p1.x,
-	    (1.0f - t) * p0.y + t * p1.y,
-	    (1.0f - t) * p0.z + t * p1.z,
-	};
-}
-
 void DrawSphere(
     const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix,
     uint32_t color) {
@@ -378,55 +369,6 @@ void DrawSphere(
 			    int(screenVerticesA.x), int(screenVerticesA.y), int(screenVerticesC.x),
 			    int(screenVerticesC.y), color);
 		}
-	}
-}
-
-// 3次ベジェ曲線
-void DrawBezier(
-    const Vector3& p0, const Vector3& p1, const Vector3& p2, const Matrix4x4& viewProjectionMatrix,
-    const Matrix4x4& viewportMatrix) {
-
-	Vector3 ndcbezier1;
-	Vector3 ndcbezier2;
-	Vector3 screenbezier1;
-	Vector3 screenbezier2;
-
-	Sphere sphere[3]{
-
-	    {{p0}, 0.01f},
-	    {{p1}, 0.01f},
-	    {{p2}, 0.01f},
-	};
-
-	// 制御点
-	for (int i = 0; i < 3; i++) {
-		DrawSphere(sphere[i], viewProjectionMatrix, viewportMatrix, BLACK);
-	}
-		
-
-
-	// ベジェ曲線
-	constexpr int kNumDivide = 128;
-	constexpr float kNumDividF = float(kNumDivide);
-	for (int index = 0; index < kNumDivide; ++index) {
-		float t0 = float(index) / kNumDividF;
-		float t1 = float(index + 2.0f) / kNumDividF;
-		
-		Vector3 p0p1 = Lerp(p0, p1, t0);
-		Vector3 p1p2 = Lerp(p1, p2, t1);
-		Vector3 pt0 = Lerp(p0p1, p1p2, t0);
-		Vector3 pt1 = Lerp(p0p1, p1p2, t1);
-
-		// 正規化デバイス座標系
-		ndcbezier1 = Transform(pt0, viewProjectionMatrix);
-		ndcbezier2 = Transform(pt1, viewProjectionMatrix);
-		// スクリーン座標系
-		screenbezier1 = Transform(ndcbezier1, viewportMatrix);
-		screenbezier2 = Transform(ndcbezier2, viewportMatrix);
-
-		Novice::DrawLine(
-		    int(screenbezier1.x), int(screenbezier1.y), int(screenbezier2.x), int(screenbezier2.y),
-		    BLUE);
 	}
 }
 
@@ -506,19 +448,40 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	char preKeys[256] = { 0 };
 
 
-	Vector3 controlPoints[3] = {
-	    {-0.8f, 0.58f, 1.0f },
-	    {1.76f, 1.0f,  -0.3f},
-	    {0.94f, -0.7f, 2.3f },
+	Vector3 translates[3] = {
+	    {0.2f, 1.0f, 0.0f},
+	    {0.4f, 0.0f, 0.0f},
+	    {0.3f, 0.0f, 0.0f},
 	};
 
+	Vector3 rotates[3] = {
+	    {0.0f, 0.0f, -6.8f},
+	    {0.0f, 0.0f, -1.4f},
+	    {0.0f, 0.0f, 0.0f},
+	};
 
-	Vector3 rotate{ 0,0,0 };
-	Vector3 translate{ 0,0,0 };
+	Vector3 scales[3] = {
+	    {1.0f, 1.0f, 1.0f},
+	    {1.0f, 1.0f, 1.0f},
+	    {1.0f, 1.0f, 1.0f},
+	};
+
+	
 	Vector3 cameraTranslate{ 0.0f,1.9f,-5.49f };
 	Vector3 cameraRotate{ 0.26f,0.0f,0.0f };
 
 	
+	  
+	Sphere sphere[3]{
+
+	    {{0.0f,0.0f,0.0f}, 0.05f},
+	    {{0.0f,0.0f,0.0f}, 0.05f},
+	    {{0.0f,0.0f,0.0f}, 0.05f},
+	};
+
+
+	Matrix4x4 worldMatrix[3];
+
 
 	int mouseMovePosX = 0;
 	int mouseMovePosY = 0;
@@ -586,12 +549,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 
 	
+		
 
 		//各行列の計算
-		Matrix4x4 worldMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, rotate, translate);
+		
 
 		Matrix4x4 cameraMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, cameraRotate, cameraTranslate);
-		Matrix4x4 viewMatrix = Inverse(cameraMatrix);
+		Matrix4x4 viewMatrix= Inverse(cameraMatrix);
 
 		Matrix4x4 projecttionMatrix = MakePerspectiverFovMatrix(0.45f, float(kWindowWidtht) / float(kWindowHeight), 0.1f, 100.0f);
 		//VPMatrixを作る。同次クリップ空間
@@ -599,15 +563,43 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//ViewportMatrixを作る
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0, 0, float(kWindowWidtht), float(kWindowHeight), 0.0f, 1.0f);
 
+		
+		// 肩
+		worldMatrix[0] = MakeAffineMatrix(scales[0], rotates[0], translates[0]);
+		 
+		// 肘
+		worldMatrix[1] =
+		    Multiply(MakeAffineMatrix(scales[1], rotates[1], translates[1]), worldMatrix[0]);
+
+		// 手
+		worldMatrix[2] =
+		    Multiply(MakeAffineMatrix(scales[2], rotates[2], translates[2]), worldMatrix[1]);
+
+			
+		
+		
+		for (int i = 0; i < 3; i++) {
+			sphere[i].center = {
+			    worldMatrix[i].m[3][0], worldMatrix[i].m[3][1], worldMatrix[i].m[3][2]};
+		
+		}
+
 
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("CamerRotate", &cameraRotate.x, 0.01f);
+		//肩
+		ImGui::DragFloat3("STrans", &translates[0].x, 0.01f);
+		ImGui::DragFloat3("SRotate", &rotates[0].x, 0.01f);
+		ImGui::DragFloat3("SScale", &scales[0].x, 0.01f);
+		//肘
+		ImGui::DragFloat3("ETrans", &translates[1].x, 0.01f);
+		ImGui::DragFloat3("ERotate", &rotates[1].x, 0.01f);
+		ImGui::DragFloat3("EScale", &scales[1].x, 0.01f);
+		//手
+		ImGui::DragFloat3("HTrans", &translates[2].x, 0.01f);
+		ImGui::DragFloat3("HRotate", &rotates[2].x, 0.01f);
+		ImGui::DragFloat3("HScale", &scales[2].x, 0.01f);
 
-		ImGui::DragFloat3("cP0", &controlPoints[0].x, 0.01f);
-		ImGui::DragFloat3("cP1", &controlPoints[1].x, 0.01f);
-		ImGui::DragFloat3("cP2", &controlPoints[2].x, 0.01f);
-
-	
 		ImGui::End();
 
 		///
@@ -620,10 +612,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
 
 		
+		
+		DrawSphere(sphere[0], viewProjectionMatrix, viewportMatrix,RED);
+		DrawSphere(sphere[1], viewProjectionMatrix, viewportMatrix, GREEN);
+		DrawSphere(sphere[2], viewProjectionMatrix, viewportMatrix, BLUE);
 
-		DrawBezier(
-		    controlPoints[0], controlPoints[1], controlPoints[2], viewProjectionMatrix,
-		    viewportMatrix);
+		Novice::DrawLine(
+		    int(sphere[0].center.x), int(sphere[0].center.y),
+			int(sphere[1].center.x),int(sphere[1].center.y),WHITE);
+	
+		Novice::DrawLine(
+		    int(sphere[1].center.x), int(sphere[1].center.y), int(sphere[2].center.x),
+		    int(sphere[2].center.y), WHITE);
+
+		Vector3 line[3];
+		for (int i = 0; i < 3; i++) {
+			line[i] = Transform(Transform(sphere[i].center, viewProjectionMatrix), viewportMatrix);
+		
+		}
+		
+		Novice::DrawLine(int(line[0].x), int(line[0].y), int(line[1].x), int(line[1].y), WHITE);
+		Novice::DrawLine(int(line[1].x), int(line[1].y), int(line[2].x), int(line[2].y), WHITE);
 
 		///
 		/// ↑描画処理ここまで
