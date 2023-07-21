@@ -27,39 +27,8 @@ struct Sphere
 
 };
 
-struct Line {
-	Vector3 origin; //始点
-	Vector3 deff; //終点への差分ベクトル
-};
-
-struct Ray {
-	Vector3 origin; //始点
-	Vector3 deff; //終点への差分ベクトル
-};
-
-struct Segment {
-	Vector3 origin; //始点
-	Vector3 deff; //終点への差分ベクトル
-
-};
-
-struct Plane
-{
-	Vector3 normal;//法線
-	float distance;//距離
-
-};
-
-struct Triangle {
-	Vector3 vertices[3];//頂点
-};
 
 
-struct AABB {
-	Vector3 min;//最小点
-	Vector3 max;//最大点
-
-};
 
 //加算
 Vector3 Add(const Vector3& v1, const Vector3& v2) {
@@ -353,13 +322,113 @@ float Dot(const Vector3& v1, const Vector3& v2) {
 	return dot;
 };
 
-Vector3 Lerp(const Vector3& v1, const Vector3& v2, float t) {
-
+Vector3 Lerp(const Vector3& p0, const Vector3& p1, float t) {
+	return {
+	    (1.0f - t) * p0.x + t * p1.x,
+	    (1.0f - t) * p0.y + t * p1.y,
+	    (1.0f - t) * p0.z + t * p1.z,
+	};
 }
 
-void DrawBezire(
-    const Vector3& controlPoints0, const Vector3& controlPoints1, const Vector3& controlPoints2,
-    const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color){};
+void DrawSphere(
+    const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix,
+    uint32_t color) {
+	const uint32_t kSubdivision = 20;                 // 分割数
+	const float pi = 3.14f;                           // π
+	const float kLonEvery = 2.0f * pi / kSubdivision; // 経度分割1つ分の角度(φd)
+	const float kLatEvery = pi / kSubdivision;        // 緯度分割1つ分の角度(θd)
+
+	// 緯度の方向に分割-π/2~π/2
+	for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
+		float lat = -pi / 2.0f + kLatEvery * latIndex; // 現在の緯度(θ)
+		// 経度の方向に分割
+		for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
+			float lon = lonIndex * kLonEvery; // 現在の経度(φ)
+			Vector3 a, b, c;
+			a = {
+			    std::cos(lat) * std::cos(lon) * sphere.radius + sphere.center.x,
+			    std::sin(lat) * sphere.radius + sphere.center.y,
+			    std::cos(lat) * std::sin(lon) * sphere.radius + sphere.center.z};
+
+			b = {
+			    std::cos(lat + kLatEvery) * std::cos(lon) * sphere.radius + sphere.center.x,
+			    std::sin(lat + kLatEvery) * sphere.radius + sphere.center.y,
+			    std::cos(lat + kLatEvery) * std::sin(lon) * sphere.radius + sphere.center.z};
+
+			c = {
+			    std::cos(lat) * std::cos(lon + kLonEvery) * sphere.radius + sphere.center.x,
+			    std::sin(lat) * sphere.radius + sphere.center.y,
+			    std::cos(lat) * std::sin(lon + kLonEvery) * sphere.radius + sphere.center.z};
+
+			// 正規化デバイス座標系
+			Vector3 ndcVertexA = Transform(a, viewProjectionMatrix);
+			Vector3 ndcVertexB = Transform(b, viewProjectionMatrix);
+			Vector3 ndcVertexC = Transform(c, viewProjectionMatrix);
+			// スクリーン座標系
+			Vector3 screenVerticesA = Transform(ndcVertexA, viewportMatrix);
+			Vector3 screenVerticesB = Transform(ndcVertexB, viewportMatrix);
+			Vector3 screenVerticesC = Transform(ndcVertexC, viewportMatrix);
+
+			// ab
+			Novice::DrawLine(
+			    int(screenVerticesA.x), int(screenVerticesA.y), int(screenVerticesB.x),
+			    int(screenVerticesB.y), color);
+			// bc
+			Novice::DrawLine(
+			    int(screenVerticesA.x), int(screenVerticesA.y), int(screenVerticesC.x),
+			    int(screenVerticesC.y), color);
+		}
+	}
+}
+
+// 3次ベジェ曲線
+void DrawBezier(
+    const Vector3& p0, const Vector3& p1, const Vector3& p2, const Matrix4x4& viewProjectionMatrix,
+    const Matrix4x4& viewportMatrix) {
+
+	Vector3 ndcbezier1;
+	Vector3 ndcbezier2;
+	Vector3 screenbezier1;
+	Vector3 screenbezier2;
+
+	Sphere sphere[3]{
+
+	    {{p0}, 0.01f},
+	    {{p1}, 0.01f},
+	    {{p2}, 0.01f},
+	};
+
+	// 制御点
+	for (int i = 0; i < 3; i++) {
+		DrawSphere(sphere[i], viewProjectionMatrix, viewportMatrix, BLACK);
+	}
+		
+
+
+	// ベジェ曲線
+	constexpr int kNumDivide = 128;
+	constexpr float kNumDividF = float(kNumDivide);
+	for (int index = 0; index < kNumDivide; ++index) {
+		float t0 = float(index) / kNumDividF;
+		float t1 = float(index + 2.0f) / kNumDividF;
+		
+		Vector3 p0p1 = Lerp(p0, p1, t0);
+		Vector3 p1p2 = Lerp(p1, p2, t1);
+		Vector3 pt0 = Lerp(p0p1, p1p2, t0);
+		Vector3 pt1 = Lerp(p0p1, p1p2, t1);
+
+		// 正規化デバイス座標系
+		ndcbezier1 = Transform(pt0, viewProjectionMatrix);
+		ndcbezier2 = Transform(pt1, viewProjectionMatrix);
+		// スクリーン座標系
+		screenbezier1 = Transform(ndcbezier1, viewportMatrix);
+		screenbezier2 = Transform(ndcbezier2, viewportMatrix);
+
+		Novice::DrawLine(
+		    int(screenbezier1.x), int(screenbezier1.y), int(screenbezier2.x), int(screenbezier2.y),
+		    BLUE);
+	}
+}
 
 void DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix) {
 	const float kGridHalfWidth = 2.0f;//Gridの半分の幅
@@ -534,7 +603,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("CamerRotate", &cameraRotate.x, 0.01f);
 
-		
+		ImGui::DragFloat3("cP0", &controlPoints[0].x, 0.01f);
+		ImGui::DragFloat3("cP1", &controlPoints[1].x, 0.01f);
+		ImGui::DragFloat3("cP2", &controlPoints[2].x, 0.01f);
+
 	
 		ImGui::End();
 
@@ -547,8 +619,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		///
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
 
-
 		
+
+		DrawBezier(
+		    controlPoints[0], controlPoints[1], controlPoints[2], viewProjectionMatrix,
+		    viewportMatrix);
 
 		///
 		/// ↑描画処理ここまで
