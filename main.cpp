@@ -559,11 +559,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	spring.dampingCoefficient = 2.0f;
 	
 	Ball ball{};
-	ball.pos = {1.2f, 0.0f, 0.0f};
-	ball.mass = 2.0f;
+	ball.pos = {0.0f, 0.0f, 0.0f};
 	ball.velo = {0.0f, 0.0f, 0.0f};
 	ball.radius = 0.05f;
 	ball.color = BLUE;
+
+	float angularVelocity = 3.14f;
+	float angle = 0.0f;
+	//回転の中心
+	Vector3 c = {0.0f,0.0f,0.0f};
 
 	Vector3 cameraTranslate{ 0.0f,1.9f,-5.49f };
 	Vector3 cameraRotate{ 0.26f,0.0f,0.0f };
@@ -587,24 +591,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		/// ↓更新処理ここから
 		///
 		
-		Vector3 diff = ball.pos - spring.anchor;
-		float length = Length(diff);
-		if (length != 0.0f) {
-			Vector3 direction = Normalize(diff);
-			Vector3 restPos = spring.anchor + direction * spring.naturalLength;
-			Vector3 displacement = length * (ball.pos - restPos);
-			Vector3 restoringForce = -spring.stiffness * displacement;
-			//減衰抵抗を計算
-			Vector3 dampingForce = -spring.dampingCoefficient * ball.velo;
-			Vector3 force = restoringForce + dampingForce;
-			ball.acceleration = force / ball.mass;
 		
-		}
 		if (start) {
-			Vector3 velo = ball.acceleration * deltaTime;
+			angle += angularVelocity * deltaTime;
+			float omg = angle * deltaTime;
+			Vector3 velo;
 			ball.velo += velo;
-			Vector3 pos = ball.velo * deltaTime;
-			ball.pos += pos;
+			Vector3 pos = {c.x + std::cos(angle) * 1.2f, c.y += std::sin(angle) * 1.2f, c.z};
+			ball.pos = pos;
 			
 		} 
 		
@@ -652,7 +646,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("CamerRotate", &cameraRotate.x, 0.01f);
-		ImGui::Checkbox("start", &start);
+		if (ImGui::Button("start")) {
+			start = true;
+		};
 
 		ImGui::End();
 
