@@ -11,9 +11,38 @@ struct Vector2 {
 	float x, y;
 };
 
+// 複合演算子
 struct Vector3 {
-	float x, y, z;
+	float x;
+	float y;
+	float z;
+
+	Vector3& operator*=(float s) {
+		x *= s;
+		y *= s;
+		z *= s;
+		return *this;
+	}
+	Vector3& operator-=(Vector3& v) {
+		x -= v.x;
+		y -= v.y;
+		z -= v.z;
+		return *this;
+	}
+	Vector3& operator+=(Vector3& v) {
+		x += v.x;
+		y += v.y;
+		z += v.z;
+		return *this;
+	}
+	Vector3& operator/=(float s) {
+		x /= s;
+		y /= s;
+		z /= s;
+		return *this;
+	}
 };
+
 
 
 struct Matrix4x4 {
@@ -27,6 +56,22 @@ struct Sphere
 
 };
 
+struct Spring {
+	//アンカー固定された位置
+	Vector3 anchor;
+	float naturalLength;//自然数
+	float stiffness;//ばね定数
+	float dampingCoefficient;//減衰抵抗
+};
+
+struct Ball {
+	Vector3 pos; // 位置
+	Vector3 velo; //速度
+	Vector3 acceleration;//加速度
+	float mass; //質量
+	float radius;   // 半径
+	unsigned int color; //色
+};
 
 
 //加算
@@ -55,6 +100,51 @@ Vector3 Multiply(float scalar, const Vector3& v) {
 	multiply.z = v.z * scalar;
 	return  multiply;
 };
+
+// 加算
+Matrix4x4 Add(const Matrix4x4& m1, const Matrix4x4& m2) {
+	Matrix4x4 add;
+	add.m[0][0] = m1.m[0][0] + m2.m[0][0];
+	add.m[0][1] = m1.m[0][1] + m2.m[0][1];
+	add.m[0][2] = m1.m[0][2] + m2.m[0][2];
+	add.m[0][3] = m1.m[0][3] + m2.m[0][3];
+	add.m[1][0] = m1.m[1][0] + m2.m[1][0];
+	add.m[1][1] = m1.m[1][1] + m2.m[1][1];
+	add.m[1][2] = m1.m[1][2] + m2.m[1][2];
+	add.m[1][3] = m1.m[1][3] + m2.m[1][3];
+	add.m[2][0] = m1.m[2][0] + m2.m[2][0];
+	add.m[2][1] = m1.m[2][1] + m2.m[2][1];
+	add.m[2][2] = m1.m[2][2] + m2.m[2][2];
+	add.m[2][3] = m1.m[2][3] + m2.m[2][3];
+	add.m[3][0] = m1.m[3][0] + m2.m[3][0];
+	add.m[3][1] = m1.m[3][1] + m2.m[3][1];
+	add.m[3][2] = m1.m[3][2] + m2.m[3][2];
+	add.m[3][3] = m1.m[3][3] + m2.m[3][3];
+	return add;
+};
+
+// 減算
+Matrix4x4 Subract(const Matrix4x4& m1, const Matrix4x4& m2) {
+	Matrix4x4 subract;
+	subract.m[0][0] = m1.m[0][0] - m2.m[0][0];
+	subract.m[0][1] = m1.m[0][1] - m2.m[0][1];
+	subract.m[0][2] = m1.m[0][2] - m2.m[0][2];
+	subract.m[0][3] = m1.m[0][3] - m2.m[0][3];
+	subract.m[1][0] = m1.m[1][0] - m2.m[1][0];
+	subract.m[1][1] = m1.m[1][1] - m2.m[1][1];
+	subract.m[1][2] = m1.m[1][2] - m2.m[1][2];
+	subract.m[1][3] = m1.m[1][3] - m2.m[1][3];
+	subract.m[2][0] = m1.m[2][0] - m2.m[2][0];
+	subract.m[2][1] = m1.m[2][1] - m2.m[2][1];
+	subract.m[2][2] = m1.m[2][2] - m2.m[2][2];
+	subract.m[2][3] = m1.m[2][3] - m2.m[2][3];
+	subract.m[3][0] = m1.m[3][0] - m2.m[3][0];
+	subract.m[3][1] = m1.m[3][1] - m2.m[3][1];
+	subract.m[3][2] = m1.m[3][2] - m2.m[3][2];
+	subract.m[3][3] = m1.m[3][3] - m2.m[3][3];
+	return subract;
+};
+
 
 //透視投影行列
 Matrix4x4 MakePerspectiverFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip) {
@@ -322,7 +412,7 @@ float Dot(const Vector3& v1, const Vector3& v2) {
 };
 
 void DrawSphere(
-    const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix,
+    const Ball& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix,
     uint32_t color) {
 	const uint32_t kSubdivision = 20;                 // 分割数
 	const float pi = 3.14f;                           // π
@@ -337,19 +427,19 @@ void DrawSphere(
 			float lon = lonIndex * kLonEvery; // 現在の経度(φ)
 			Vector3 a, b, c;
 			a = {
-			    std::cos(lat) * std::cos(lon) * sphere.radius + sphere.center.x,
-			    std::sin(lat) * sphere.radius + sphere.center.y,
-			    std::cos(lat) * std::sin(lon) * sphere.radius + sphere.center.z};
+			    std::cos(lat) * std::cos(lon) * sphere.radius + sphere.pos.x,
+			    std::sin(lat) * sphere.radius + sphere.pos.y,
+			    std::cos(lat) * std::sin(lon) * sphere.radius + sphere.pos.z};
 
 			b = {
-			    std::cos(lat + kLatEvery) * std::cos(lon) * sphere.radius + sphere.center.x,
-			    std::sin(lat + kLatEvery) * sphere.radius + sphere.center.y,
-			    std::cos(lat + kLatEvery) * std::sin(lon) * sphere.radius + sphere.center.z};
+			    std::cos(lat + kLatEvery) * std::cos(lon) * sphere.radius + sphere.pos.x,
+			    std::sin(lat + kLatEvery) * sphere.radius + sphere.pos.y,
+			    std::cos(lat + kLatEvery) * std::sin(lon) * sphere.radius + sphere.pos.z};
 
 			c = {
-			    std::cos(lat) * std::cos(lon + kLonEvery) * sphere.radius + sphere.center.x,
-			    std::sin(lat) * sphere.radius + sphere.center.y,
-			    std::cos(lat) * std::sin(lon + kLonEvery) * sphere.radius + sphere.center.z};
+			    std::cos(lat) * std::cos(lon + kLonEvery) * sphere.radius + sphere.pos.x,
+			    std::sin(lat) * sphere.radius + sphere.pos.y,
+			    std::cos(lat) * std::sin(lon + kLonEvery) * sphere.radius + sphere.pos.z};
 
 			// 正規化デバイス座標系
 			Vector3 ndcVertexA = Transform(a, viewProjectionMatrix);
@@ -429,6 +519,20 @@ void DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMa
 
 }
 
+ /*--------------------演算子オーバーロード---------------------------*/
+// 二項演算子
+Vector3 operator+(const Vector3& v1, const Vector3& v2) { return Add(v1, v2); }
+Vector3 operator-(const Vector3& v1, const Vector3& v2) { return Subract(v1, v2); }
+Vector3 operator*(float s, const Vector3& v2) { return Multiply(s, v2); }
+Vector3 operator*(const Vector3& v, float s) { return s * v; }
+Vector3 operator/(const Vector3& v, float s) { return Multiply(1.0f / s, v); }
+Matrix4x4 operator+(const Matrix4x4& m1, const Matrix4x4& m2) { return Add(m1, m2); }
+Matrix4x4 operator-(const Matrix4x4& m1, const Matrix4x4& m2) { return Subract(m1, m2); }
+Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2) { return Multiply(m1, m2); }
+
+// 単項演算子
+Vector3 operator-(const Vector3& v) { return {-v.x, -v.y, -v.z}; }
+Vector3 operator+(const Vector3& v) { return v; }
 
 static const int kRowHeight = 20;
 static const int kColumnWidth = 60;
@@ -448,45 +552,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	char preKeys[256] = { 0 };
 
 
-	Vector3 translates[3] = {
-	    {0.2f, 1.0f, 0.0f},
-	    {0.4f, 0.0f, 0.0f},
-	    {0.3f, 0.0f, 0.0f},
-	};
-
-	Vector3 rotates[3] = {
-	    {0.0f, 0.0f, -6.8f},
-	    {0.0f, 0.0f, -1.4f},
-	    {0.0f, 0.0f, 0.0f},
-	};
-
-	Vector3 scales[3] = {
-	    {1.0f, 1.0f, 1.0f},
-	    {1.0f, 1.0f, 1.0f},
-	    {1.0f, 1.0f, 1.0f},
-	};
-
+	Spring spring {};
+	spring.anchor = {0.0f, 0.0f, 0.0f};
+	spring.naturalLength = 1.0f;
+	spring.stiffness = 100.0f;
+	spring.dampingCoefficient = 2.0f;
 	
+	Ball ball{};
+	ball.pos = {1.2f, 0.0f, 0.0f};
+	ball.mass = 2.0f;
+	ball.velo = {0.0f, 0.0f, 0.0f};
+	ball.radius = 0.05f;
+	ball.color = BLUE;
+
 	Vector3 cameraTranslate{ 0.0f,1.9f,-5.49f };
 	Vector3 cameraRotate{ 0.26f,0.0f,0.0f };
 
 	
-	  
-	Sphere sphere[3]{
+	float deltaTime = 1.0f / 60.0f;
 
-	    {{0.0f,0.0f,0.0f}, 0.05f},
-	    {{0.0f,0.0f,0.0f}, 0.05f},
-	    {{0.0f,0.0f,0.0f}, 0.05f},
-	};
-
-
-	Matrix4x4 worldMatrix[3];
-
-
-	int mouseMovePosX = 0;
-	int mouseMovePosY = 0;
-
-	
+	bool start = false;
 	const float move = 0.01f;
 
 	// ウィンドウの×ボタンが押されるまでループ
@@ -502,28 +587,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		/// ↓更新処理ここから
 		///
 		
-
+		Vector3 diff = ball.pos - spring.anchor;
+		float length = Length(diff);
+		if (length != 0.0f) {
+			Vector3 direction = Normalize(diff);
+			Vector3 restPos = spring.anchor + direction * spring.naturalLength;
+			Vector3 displacement = length * (ball.pos - restPos);
+			Vector3 restoringForce = -spring.stiffness * displacement;
+			//減衰抵抗を計算
+			Vector3 dampingForce = -spring.dampingCoefficient * ball.velo;
+			Vector3 force = restoringForce + dampingForce;
+			ball.acceleration = force / ball.mass;
 		
-		if (keys[DIK_SPACE]) {
-			Novice::GetMousePosition(&mouseMovePosX, &mouseMovePosY);
-			
-			
-			
-			if (mouseMovePosX > 1280/2) {
-				cameraRotate.y += move;
-			}
-			else if (mouseMovePosX < 1280/2) {
-				cameraRotate.y -= move;
-			}
-			/*
-			if (mouseMovePosY > 720 / 2) {
-				cameraRotate.x += move;
-			}
-			else if (mouseMovePosY < 720 / 2) {
-				cameraRotate.x -= move;
-			}
-			*/
 		}
+		if (start) {
+			Vector3 velo = ball.acceleration * deltaTime;
+			ball.velo += velo;
+			Vector3 pos = ball.velo * deltaTime;
+			ball.pos += pos;
+			
+		} 
+		
 		
 
 		if (keys[DIK_W]) {
@@ -564,41 +648,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0, 0, float(kWindowWidtht), float(kWindowHeight), 0.0f, 1.0f);
 
 		
-		// 肩
-		worldMatrix[0] = MakeAffineMatrix(scales[0], rotates[0], translates[0]);
-		 
-		// 肘
-		worldMatrix[1] =
-		    Multiply(MakeAffineMatrix(scales[1], rotates[1], translates[1]), worldMatrix[0]);
-
-		// 手
-		worldMatrix[2] =
-		    Multiply(MakeAffineMatrix(scales[2], rotates[2], translates[2]), worldMatrix[1]);
-
-			
 		
-		
-		for (int i = 0; i < 3; i++) {
-			sphere[i].center = {
-			    worldMatrix[i].m[3][0], worldMatrix[i].m[3][1], worldMatrix[i].m[3][2]};
-		
-		}
-
 
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("CamerRotate", &cameraRotate.x, 0.01f);
-		//肩
-		ImGui::DragFloat3("STrans", &translates[0].x, 0.01f);
-		ImGui::DragFloat3("SRotate", &rotates[0].x, 0.01f);
-		ImGui::DragFloat3("SScale", &scales[0].x, 0.01f);
-		//肘
-		ImGui::DragFloat3("ETrans", &translates[1].x, 0.01f);
-		ImGui::DragFloat3("ERotate", &rotates[1].x, 0.01f);
-		ImGui::DragFloat3("EScale", &scales[1].x, 0.01f);
-		//手
-		ImGui::DragFloat3("HTrans", &translates[2].x, 0.01f);
-		ImGui::DragFloat3("HRotate", &rotates[2].x, 0.01f);
-		ImGui::DragFloat3("HScale", &scales[2].x, 0.01f);
+		ImGui::Checkbox("start", &start);
 
 		ImGui::End();
 
@@ -613,26 +667,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		
 		
-		DrawSphere(sphere[0], viewProjectionMatrix, viewportMatrix,RED);
-		DrawSphere(sphere[1], viewProjectionMatrix, viewportMatrix, GREEN);
-		DrawSphere(sphere[2], viewProjectionMatrix, viewportMatrix, BLUE);
-
-		Novice::DrawLine(
-		    int(sphere[0].center.x), int(sphere[0].center.y),
-			int(sphere[1].center.x),int(sphere[1].center.y),WHITE);
-	
-		Novice::DrawLine(
-		    int(sphere[1].center.x), int(sphere[1].center.y), int(sphere[2].center.x),
-		    int(sphere[2].center.y), WHITE);
-
-		Vector3 line[3];
-		for (int i = 0; i < 3; i++) {
-			line[i] = Transform(Transform(sphere[i].center, viewProjectionMatrix), viewportMatrix);
+		DrawSphere(ball, viewProjectionMatrix, viewportMatrix, ball.color);
 		
-		}
-		
+		Vector3 line[2];
+		line[0] = Transform(Transform(ball.pos, viewProjectionMatrix), viewportMatrix);
+		line[1] = Transform(Transform({0,0,0}, viewProjectionMatrix), viewportMatrix);
 		Novice::DrawLine(int(line[0].x), int(line[0].y), int(line[1].x), int(line[1].y), WHITE);
-		Novice::DrawLine(int(line[1].x), int(line[1].y), int(line[2].x), int(line[2].y), WHITE);
 
 		///
 		/// ↑描画処理ここまで
