@@ -354,7 +354,7 @@ bool IsCollision(const Segment& line, const Plane& plane) {
 
 	float t = (plane.distance - Dot(line.origin, plane.normal)) / dot;
 	//float length = Length(Normalize(line.deff));
-	if (t >= 0 && t<=1) {
+	if (t >= 0 && t <=1) {
 		collision = true;
 	}
 
@@ -499,7 +499,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Segment segment{ {-0.45f,0.3f,0.0f},{1.0f,0.5f,0.0f} };
 	Vector3 point{ -1.5f,0.6f,0.6f };
 
-
+	const float move = 0.01f;
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
 		// フレームの開始
@@ -513,6 +513,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		/// ↓更新処理ここから
 		///
 
+		int value = Novice::GetWheel();
+
+		if (keys[DIK_W]) {
+			cameraTranslate.y += move;
+		} else if (keys[DIK_S]) {
+			cameraTranslate.y -= move;
+		} else if (keys[DIK_D]) {
+			cameraTranslate.x += move;
+		} else if (keys[DIK_A]) {
+			cameraTranslate.x -= move;
+		}
+
+
+		if (value > 0) {
+			cameraTranslate.z += move * 10;
+		} else if (value < 0) {
+			cameraTranslate.z -= move * 10;
+		}
 
 
 
