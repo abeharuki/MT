@@ -74,6 +74,16 @@ struct Pendulum {
 
 };
 
+struct ConicalPendulum {
+	Vector3 anchor;            // アンカーポイント
+	float length;              // 紐の長さ
+	float halfApexAngle;       // 円錐の頂点の半分
+	float angle;               // 現在の角度
+	float angularVelocity;     // 角速度ω
+	
+};
+
+
 //加算
 Vector3 Add(const Vector3& v1, const Vector3& v2) {
 	Vector3 add;
@@ -551,13 +561,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	char keys[256] = { 0 };
 	char preKeys[256] = { 0 };
 
-	Pendulum pendulum;
-	pendulum.anchor = {0.0f, 1.0f, 0.0f};
-	pendulum.length = 0.8f;
-	pendulum.angle = 0.7f;
-	pendulum.angularVelocity = 0.0f;
-	pendulum.angularAcceleration = 0.0f;
-	
+	ConicalPendulum conicalPendulum;
+	conicalPendulum.anchor = {0.0f, 1.0f, 0.0f};
+	conicalPendulum.length = 0.8f;
+	conicalPendulum.halfApexAngle = 0.7f;
+	conicalPendulum.angle = 0.0f;
+	conicalPendulum.angularVelocity = 0.0f;
+
 	Ball ball{};
 	ball.pos = {0.0f, 0.0f, 0.0f};
 	ball.velo = {0.0f, 0.0f, 0.0f};
@@ -590,17 +600,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		
 		
 		if (start) {
-			pendulum.angularAcceleration = -(9.0f / pendulum.length) * std::sin(pendulum.angle);
-			pendulum.angularVelocity += pendulum.angularAcceleration * deltaTime;
-			pendulum.angle += pendulum.angularVelocity * deltaTime;
+			conicalPendulum.angularVelocity = std::sqrt(9.0f/(conicalPendulum.length * std::cos(conicalPendulum.halfApexAngle)));
+			conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime;
 			
 
 		} 
-		
+		float radius = std::sin(conicalPendulum.halfApexAngle) * conicalPendulum.length;
+		float height = std::cos(conicalPendulum.halfApexAngle) * conicalPendulum.length;
 		ball.pos = {
-		    pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length,
-		    pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length,
-			pendulum.anchor.z};
+			conicalPendulum.anchor.x + std::cos(conicalPendulum.angle) * radius,
+			conicalPendulum.anchor.y - height,
+		    conicalPendulum.anchor.z - std::sin(conicalPendulum.angle) * radius,
+		};
 
 		if (keys[DIK_W]) {
 			cameraTranslate.y += move;
