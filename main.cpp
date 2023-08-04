@@ -690,7 +690,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	float deltaTime = 1.0f / 60.0f;
 
 	bool start = false;
-	bool reset= false;
+	
 	const float move = 0.01f;
 
 	// ウィンドウの×ボタンが押されるまでループ
