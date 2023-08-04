@@ -477,6 +477,33 @@ bool IsCollision(const Sphere& s1, const Plane& plane) {
 	return collision;
 }
 
+Vector3 ClosestPoint(const Segment& segment, const Vector3 point) {
+	// 直線のベクトル
+	Vector3 lineVector = segment.deff - segment.origin;
+	float length = sqrtf(
+	    lineVector.x * lineVector.x + lineVector.y * lineVector.y + lineVector.z * lineVector.z);
+
+	// 単位ベクトル
+	Vector3 unitVector = lineVector;
+	if (length != 0.0f) {
+		unitVector.x = lineVector.x / length;
+		unitVector.y = lineVector.y / length;
+		unitVector.z = lineVector.z / length;
+	}
+
+	// 始点からポイントへのベクトル
+	Vector3 toCenter = point - segment.origin;
+
+	// 内積
+	float dot = Dot(toCenter, unitVector);
+
+	// 最近接点が円の内部にいるかどうかで判定
+	dot = fmaxf(0.0f, fminf(dot, length));
+	Vector3 closestPoint = segment.origin + unitVector * dot;
+	
+	return closestPoint;
+}
+
 
 void DrawSphere(
     const Ball& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix,
@@ -640,25 +667,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	
 	Ball ball{};
-	ball.pos = {0.0f, 2.0f, 0.0f};
+	ball.pos = {0.8f, 2.0f, 0.0f};
 	ball.velo = {0.0f, 0.0f, 0.0f};
 	ball.radius = 0.05f;
 	ball.acceleration = {0.0f, -9.8f, 0.0f};
 	ball.color = BLUE;
 
 	Plane plane;
-	plane.normal = {0.0f, 1.0f, 0.0f};
+	plane.normal = {-0.2f, 1.0f, -0.2f};
 	plane.distance = 0.0f;
 	
+	Capsule capsule;
+	capsule.segment.origin = ball.pos;
+	capsule.segment.deff = {0.0f, 0.0f, 0.0f};
+	capsule.radius = ball.radius;
 	
 	Vector3 cameraTranslate{ 0.0f,1.9f,-5.49f };
 	Vector3 cameraRotate{ 0.26f,0.0f,0.0f };
 
 	
-	float e = 0.8f;//反発係数
+	float e = 0.6f;//反発係数
 	float deltaTime = 1.0f / 60.0f;
 
 	bool start = false;
+	bool reset= false;
 	const float move = 0.01f;
 
 	// ウィンドウの×ボタンが押されるまでループ
@@ -680,6 +712,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ball.velo += velo;
 			Vector3 pos = ball.velo * deltaTime;
 			ball.pos += pos;
+			//カプセルの位置
+			capsule.segment.deff = ball.pos;
+		
+
+
+
+
+
+
+
 			if (IsCollision(Sphere{ball.pos, ball.radius}, plane)) {
 				ball.velo = Reflect(ball.velo, plane.normal) * e;
 			}
@@ -687,6 +729,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 		} 
+		
+
 		
 
 		if (keys[DIK_W]) {
@@ -733,7 +777,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		ImGui::DragFloat3("CamerRotate", &cameraRotate.x, 0.01f);
 		if (ImGui::Button("start")) {
 			start = true;
+			
 		};
+		
 		ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
 		ImGui::DragFloat("Plane Distance", &plane.distance, 0.01f);
 		ImGui::End();
