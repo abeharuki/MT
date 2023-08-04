@@ -667,14 +667,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	
 	Ball ball{};
-	ball.pos = {0.8f, 2.0f, 0.0f};
+	ball.pos = {0.8f, 1.2f, 0.3f};
 	ball.velo = {0.0f, 0.0f, 0.0f};
 	ball.radius = 0.05f;
 	ball.acceleration = {0.0f, -9.8f, 0.0f};
 	ball.color = BLUE;
 
 	Plane plane;
-	plane.normal = {-0.2f, 1.0f, -0.2f};
+	plane.normal = {-0.2f, 0.9f, -0.3f};
 	plane.distance = 0.0f;
 	
 	Capsule capsule;
@@ -686,7 +686,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector3 cameraRotate{ 0.26f,0.0f,0.0f };
 
 	
-	float e = 0.6f;//反発係数
+	float e = 0.8f;//反発係数
 	float deltaTime = 1.0f / 60.0f;
 
 	bool start = false;
@@ -714,9 +714,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ball.pos += pos;
 			//カプセルの位置
 			capsule.segment.deff = ball.pos;
+			Vector3 center = Multiply(plane.distance, plane.normal);
+
+			Segment capsuleLine = {capsule.segment.origin, capsule.segment.deff};
+			Vector3 closestPoint = ClosestPoint(capsuleLine, center);
+			Vector3 closestPointToCenter = center - closestPoint;
+			float sumRadius = 1 + capsule.radius;
 		
-
-
+			if (Dot(closestPointToCenter, closestPointToCenter) < sumRadius * sumRadius) {
+				
+			}
 			if (IsCollision(Sphere{ball.pos, ball.radius}, plane)) {
 				ball.velo = Reflect(ball.velo, plane.normal) * e;
 			}
