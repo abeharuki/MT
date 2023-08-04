@@ -56,14 +56,6 @@ struct Sphere
 
 };
 
-struct Spring {
-	//アンカー固定された位置
-	Vector3 anchor;
-	float naturalLength;//自然数
-	float stiffness;//ばね定数
-	float dampingCoefficient;//減衰抵抗
-};
-
 struct Ball {
 	Vector3 pos; // 位置
 	Vector3 velo; //速度
@@ -73,6 +65,14 @@ struct Ball {
 	unsigned int color; //色
 };
 
+struct Pendulum {
+	Vector3 anchor;//アンカーポイント
+	float length;//紐の長さ
+	float angle;//現在の角度
+	float angularVelocity;//角速度ω
+	float angularAcceleration;//角加速度
+
+};
 
 //加算
 Vector3 Add(const Vector3& v1, const Vector3& v2) {
@@ -551,12 +551,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	char keys[256] = { 0 };
 	char preKeys[256] = { 0 };
 
-
-	Spring spring {};
-	spring.anchor = {0.0f, 0.0f, 0.0f};
-	spring.naturalLength = 1.0f;
-	spring.stiffness = 100.0f;
-	spring.dampingCoefficient = 2.0f;
+	Pendulum pendulum;
+	pendulum.anchor = {0.0f, 1.0f, 0.0f};
+	pendulum.length = 0.8f;
+	pendulum.angle = 0.7f;
+	pendulum.angularVelocity = 0.0f;
+	pendulum.angularAcceleration = 0.0f;
 	
 	Ball ball{};
 	ball.pos = {0.0f, 0.0f, 0.0f};
@@ -564,13 +564,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ball.radius = 0.05f;
 	ball.color = BLUE;
 
-	float angularVelocity = 3.14f;
-	float angle = 0.0f;
-	//回転の中心
-	Vector3 c = {0.0f,0.0f,0.0f};
-	//中心からの距離
-	float r = 0.8f;
-
+	
+	
 	Vector3 cameraTranslate{ 0.0f,1.9f,-5.49f };
 	Vector3 cameraRotate{ 0.26f,0.0f,0.0f };
 
@@ -595,24 +590,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		
 		
 		if (start) {
-			angle += angularVelocity * deltaTime;
-			/*/角速度の求め方
-			float omega = angle * deltaTime;
-			//等速円運動の速度
-			Vector3 velo = {
-			    -r * omega * std::sin(angle),
-			    r * omega * std::cos(angle),
-			    0.0f
-			};
-			//等速円運動の加速度
-			float a = (float)-pow(omega, 2) * r;
-			*/
-			
+			pendulum.angularAcceleration = -(9.0f / pendulum.length) * std::sin(pendulum.angle);
+			pendulum.angularVelocity += pendulum.angularAcceleration * deltaTime;
+			pendulum.angle += pendulum.angularVelocity * deltaTime;
 			
 
 		} 
 		
-		ball.pos = {c.x + std::cos(angle) * r, c.y + std::sin(angle) * r, c.z};
+		ball.pos = {
+		    pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length,
+		    pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length,
+			pendulum.anchor.z};
 
 		if (keys[DIK_W]) {
 			cameraTranslate.y += move;
@@ -677,7 +665,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		
 		Vector3 line[2];
 		line[0] = Transform(Transform(ball.pos, viewProjectionMatrix), viewportMatrix);
-		line[1] = Transform(Transform({0,0,0}, viewProjectionMatrix), viewportMatrix);
+		line[1] = Transform(Transform({0,1.0f,0}, viewProjectionMatrix), viewportMatrix);
 		Novice::DrawLine(int(line[0].x), int(line[0].y), int(line[1].x), int(line[1].y), WHITE);
 
 		///
