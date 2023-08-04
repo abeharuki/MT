@@ -717,20 +717,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		
 
 
-
-
-
-
-
 			if (IsCollision(Sphere{ball.pos, ball.radius}, plane)) {
 				ball.velo = Reflect(ball.velo, plane.normal) * e;
 			}
 			
 
-
 		} 
-		
-
 		
 
 		if (keys[DIK_W]) {
