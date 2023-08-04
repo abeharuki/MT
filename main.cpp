@@ -568,6 +568,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	float angle = 0.0f;
 	//回転の中心
 	Vector3 c = {0.0f,0.0f,0.0f};
+	//中心からの距離
+	float r = 0.8f;
 
 	Vector3 cameraTranslate{ 0.0f,1.9f,-5.49f };
 	Vector3 cameraRotate{ 0.26f,0.0f,0.0f };
@@ -594,15 +596,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		
 		if (start) {
 			angle += angularVelocity * deltaTime;
-			float omg = angle * deltaTime;
-			Vector3 velo;
-			ball.velo += velo;
-			Vector3 pos = {c.x + std::cos(angle) * 1.2f, c.y += std::sin(angle) * 1.2f, c.z};
-			ball.pos = pos;
+			/*/角速度の求め方
+			float omega = angle * deltaTime;
+			//等速円運動の速度
+			Vector3 velo = {
+			    -r * omega * std::sin(angle),
+			    r * omega * std::cos(angle),
+			    0.0f
+			};
+			//等速円運動の加速度
+			float a = (float)-pow(omega, 2) * r;
+			*/
 			
+			
+
 		} 
 		
-		
+		ball.pos = {c.x + std::cos(angle) * r, c.y + std::sin(angle) * r, c.z};
 
 		if (keys[DIK_W]) {
 			cameraTranslate.y += move;
