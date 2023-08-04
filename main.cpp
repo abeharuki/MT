@@ -7,6 +7,8 @@
 
 const char kWindowTitle[] = "学籍番号";
 
+
+ 
 struct Vector2 {
 	float x, y;
 };
@@ -56,6 +58,17 @@ struct Sphere
 
 };
 
+struct Segment {
+	Vector3 origin; // 始点
+	Vector3 deff;   // 終点への差分ベクトル
+};
+
+struct Plane {
+	Vector3 normal; // 法線
+	float distance; // 距離
+};
+
+
 struct Ball {
 	Vector3 pos; // 位置
 	Vector3 velo; //速度
@@ -83,6 +96,10 @@ struct ConicalPendulum {
 	
 };
 
+struct Capsule {
+	Segment segment;
+	float radius;
+};
 
 //加算
 Vector3 Add(const Vector3& v1, const Vector3& v2) {
@@ -421,6 +438,46 @@ float Dot(const Vector3& v1, const Vector3& v2) {
 	return dot;
 };
 
+
+/*--------------------演算子オーバーロード---------------------------*/
+// 二項演算子
+Vector3 operator+(const Vector3& v1, const Vector3& v2) { return Add(v1, v2); }
+Vector3 operator-(const Vector3& v1, const Vector3& v2) { return Subract(v1, v2); }
+Vector3 operator*(float s, const Vector3& v2) { return Multiply(s, v2); }
+Vector3 operator*(const Vector3& v, float s) { return s * v; }
+Vector3 operator/(const Vector3& v, float s) { return Multiply(1.0f / s, v); }
+Matrix4x4 operator+(const Matrix4x4& m1, const Matrix4x4& m2) { return Add(m1, m2); }
+Matrix4x4 operator-(const Matrix4x4& m1, const Matrix4x4& m2) { return Subract(m1, m2); }
+Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2) { return Multiply(m1, m2); }
+
+// 単項演算子
+Vector3 operator-(const Vector3& v) { return {-v.x, -v.y, -v.z}; }
+Vector3 operator+(const Vector3& v) { return v; }
+
+
+
+//反射
+Vector3 Reflect(const Vector3& input, const Vector3& normal) { 
+	Vector3 r;
+	r = input - 2 * Dot(input, normal) * normal;
+
+	return r;
+}
+
+bool IsCollision(const Sphere& s1, const Plane& plane) {
+	bool collision = false;
+	// 球の中心点の距離を求める
+	float k1 = Dot(plane.normal, s1.center) - plane.distance;
+
+	// float k2 = -Length(Normalize(plane.normal)) * Length(Normalize(s1.center)) - plane.distance;
+	if (k1 <= s1.radius && -k1 <= s1.radius) {
+		collision = true;
+	}
+
+	return collision;
+}
+
+
 void DrawSphere(
     const Ball& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix,
     uint32_t color) {
@@ -529,20 +586,40 @@ void DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMa
 
 }
 
- /*--------------------演算子オーバーロード---------------------------*/
-// 二項演算子
-Vector3 operator+(const Vector3& v1, const Vector3& v2) { return Add(v1, v2); }
-Vector3 operator-(const Vector3& v1, const Vector3& v2) { return Subract(v1, v2); }
-Vector3 operator*(float s, const Vector3& v2) { return Multiply(s, v2); }
-Vector3 operator*(const Vector3& v, float s) { return s * v; }
-Vector3 operator/(const Vector3& v, float s) { return Multiply(1.0f / s, v); }
-Matrix4x4 operator+(const Matrix4x4& m1, const Matrix4x4& m2) { return Add(m1, m2); }
-Matrix4x4 operator-(const Matrix4x4& m1, const Matrix4x4& m2) { return Subract(m1, m2); }
-Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2) { return Multiply(m1, m2); }
+// 法線と垂直なベクトルを求める
+Vector3 Perpendicular(const Vector3& vector) {
+	if (vector.x != 0.0f || vector.y != 0.0f) {
+		return {-vector.y, vector.x, 0.0f};
+	}
+	return {0.0f, -vector.z, vector.y};
+}
 
-// 単項演算子
-Vector3 operator-(const Vector3& v) { return {-v.x, -v.y, -v.z}; }
-Vector3 operator+(const Vector3& v) { return v; }
+// 平面の描画
+void DrawPlane(
+    const Plane& plane, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix,
+    uint32_t color) {
+	Vector3 center = Multiply(plane.distance, plane.normal);
+	Vector3 perpendiculars[4];
+	perpendiculars[0] = Normalize(Perpendicular(plane.normal));
+	perpendiculars[1] = {-perpendiculars[0].x, -perpendiculars[0].y, -perpendiculars[0].z};
+	perpendiculars[2] = Cross(plane.normal, perpendiculars[0]);
+	perpendiculars[3] = {-perpendiculars[2].x, -perpendiculars[2].y, -perpendiculars[2].z};
+
+	Vector3 points[4];
+	for (int32_t index = 0; index < 4; ++index) {
+		Vector3 extend = Multiply(2.0f, perpendiculars[index]);
+		Vector3 point = Add(center, extend);
+		points[index] = Transform(Transform(point, viewProjectionMatrix), viewportMatrix);
+	}
+
+	Novice::DrawLine(int(points[0].x), int(points[0].y), int(points[2].x), int(points[2].y), color);
+
+	Novice::DrawLine(int(points[2].x), int(points[2].y), int(points[1].x), int(points[1].y), color);
+
+	Novice::DrawLine(int(points[0].x), int(points[0].y), int(points[3].x), int(points[3].y), color);
+
+	Novice::DrawLine(int(points[1].x), int(points[1].y), int(points[3].x), int(points[3].y), color);
+}
 
 static const int kRowHeight = 20;
 static const int kColumnWidth = 60;
@@ -561,25 +638,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	char keys[256] = { 0 };
 	char preKeys[256] = { 0 };
 
-	ConicalPendulum conicalPendulum;
-	conicalPendulum.anchor = {0.0f, 1.0f, 0.0f};
-	conicalPendulum.length = 0.8f;
-	conicalPendulum.halfApexAngle = 0.7f;
-	conicalPendulum.angle = 0.0f;
-	conicalPendulum.angularVelocity = 0.0f;
-
+	
 	Ball ball{};
-	ball.pos = {0.0f, 0.0f, 0.0f};
+	ball.pos = {0.0f, 2.0f, 0.0f};
 	ball.velo = {0.0f, 0.0f, 0.0f};
 	ball.radius = 0.05f;
+	ball.acceleration = {0.0f, -9.8f, 0.0f};
 	ball.color = BLUE;
 
+	Plane plane;
+	plane.normal = {0.0f, 1.0f, 0.0f};
+	plane.distance = 0.0f;
 	
 	
 	Vector3 cameraTranslate{ 0.0f,1.9f,-5.49f };
 	Vector3 cameraRotate{ 0.26f,0.0f,0.0f };
 
 	
+	float e = 0.8f;//反発係数
 	float deltaTime = 1.0f / 60.0f;
 
 	bool start = false;
@@ -600,18 +676,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		
 		
 		if (start) {
-			conicalPendulum.angularVelocity = std::sqrt(9.0f/(conicalPendulum.length * std::cos(conicalPendulum.halfApexAngle)));
-			conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime;
+			Vector3 velo = ball.acceleration * deltaTime;
+			ball.velo += velo;
+			Vector3 pos = ball.velo * deltaTime;
+			ball.pos += pos;
+			if (IsCollision(Sphere{ball.pos, ball.radius}, plane)) {
+				ball.velo = Reflect(ball.velo, plane.normal) * e;
+			}
 			
 
+
 		} 
-		float radius = std::sin(conicalPendulum.halfApexAngle) * conicalPendulum.length;
-		float height = std::cos(conicalPendulum.halfApexAngle) * conicalPendulum.length;
-		ball.pos = {
-			conicalPendulum.anchor.x + std::cos(conicalPendulum.angle) * radius,
-			conicalPendulum.anchor.y - height,
-		    conicalPendulum.anchor.z - std::sin(conicalPendulum.angle) * radius,
-		};
+		
 
 		if (keys[DIK_W]) {
 			cameraTranslate.y += move;
@@ -658,7 +734,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		if (ImGui::Button("start")) {
 			start = true;
 		};
-
+		ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
+		ImGui::DragFloat("Plane Distance", &plane.distance, 0.01f);
 		ImGui::End();
 
 		///
@@ -674,10 +751,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		
 		DrawSphere(ball, viewProjectionMatrix, viewportMatrix, ball.color);
 		
-		Vector3 line[2];
-		line[0] = Transform(Transform(ball.pos, viewProjectionMatrix), viewportMatrix);
-		line[1] = Transform(Transform({0,1.0f,0}, viewProjectionMatrix), viewportMatrix);
-		Novice::DrawLine(int(line[0].x), int(line[0].y), int(line[1].x), int(line[1].y), WHITE);
+		DrawPlane(plane, viewProjectionMatrix, viewportMatrix, WHITE);
+
 
 		///
 		/// ↑描画処理ここまで
